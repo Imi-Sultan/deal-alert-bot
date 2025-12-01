@@ -5,7 +5,7 @@ import os
 
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 CHECK_INTERVAL = 300  # 5 minutes
-DISCOUNT_TRIGGER = 85
+DISCOUNT_TRIGGER = 10
 
 sent_deals = set()
 
