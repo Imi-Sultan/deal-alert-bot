@@ -2,94 +2,67 @@ import requests
 import time
 
 WEBHOOK_URL = "YOUR_DISCORD_WEBHOOK"
-DISCOUNT_TRIGGER = 10
-CHECK_INTERVAL = 300  # 5 min
+DISCOUNT_TRIGGER = 30
+CHECK_INTERVAL = 300
+
+API_URL = "https://www.onedayonly.co.za/api/products?type=TODAYS_DEALS"
 
 sent_deals = set()
 
-GRAPHQL_URL = "https://www.onedayonly.co.za/graphql"
-
-QUERY = {
-    "query": """
-    query {
-      productsToday {
-        id
-        name
-        brand
-        url
-        price { value }
-        retailPrice { value }
-        saving { percent }
-      }
-    }
-    """
-}
-
-def fetch_products():
+def send(msg):
     try:
-        response = requests.post(GRAPHQL_URL, json=QUERY, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-        return data["data"]["productsToday"]
+        requests.post(WEBHOOK_URL, json={"content": msg})
+    except:
+        pass
+
+def format_price(x):
+    return f"R{x:,.0f}"
+
+def fetch_deals():
+    try:
+        r = requests.get(API_URL, timeout=10)
+        r.raise_for_status()
+        return r.json()
     except Exception as e:
         print("Fetch error:", e)
         return []
 
-def send_discord(message):
-    try:
-        requests.post(WEBHOOK_URL, json={"content": message})
-    except:
-        pass
-
-def format_price(value):
-    return f"R{value:,.0f}"
-
 def check_deals():
-    global sent_deals
-
-    products = fetch_products()
+    products = fetch_deals()
     if not products:
         return
 
-    for p in products:
+    for item in products:
         try:
-            name = p["name"]
-            brand = p["brand"] or ""
-            title = f"{brand} {name}".strip()
+            title = f"{item.get('brand','')} {item.get('name','')}".strip()
 
-            now_price = p["price"]["value"]
-            was_price = p["retailPrice"]["value"]
-
-            if was_price <= 0:
-                continue
-
+            was_price = item["retailPrice"]["value"]
+            now_price = item["price"]["value"]
             discount = round((1 - now_price / was_price) * 100, 2)
 
-            uid = f"{p['id']}-{now_price}"
+            url = "https://www.onedayonly.co.za" + item["url"]
+
+            uid = f"{item['id']}-{now_price}"
             if uid in sent_deals:
                 continue
 
             if discount >= DISCOUNT_TRIGGER:
-                link = "https://www.onedayonly.co.za" + p["url"]
+                sent_deals.add(uid)
 
                 msg = (
                     f"🔥 **{discount}% OFF!**\n"
                     f"**{title}**\n"
                     f"Now: {format_price(now_price)}\n"
                     f"Was: {format_price(was_price)}\n"
-                    f"{link}"
+                    f"{url}"
                 )
-
-                send_discord(msg)
-                sent_deals.add(uid)
+                send(msg)
 
         except Exception as e:
             print("Parse error:", e)
             continue
 
-
-# ------------ MAIN LOOP -------------
-send_discord(f"🟢 ODO Deal Monitor started ({DISCOUNT_TRIGGER}%+ GraphQL)")
+send(f"🟢 ODO API Monitor started ({DISCOUNT_TRIGGER}%+)")
 
 while True:
     check_deals()
