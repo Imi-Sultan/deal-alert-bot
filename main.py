@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 import time
 
 WEBHOOK_URL = "https://discord.com/api/webhooks/1445097186374193244/kSs02vq-hJTh85ZQuPDiMKaEAp1l2mS7SzFVNAeELZ3dhMfcpgNb1LYjbq0E3VBzOB8T"
-DISCOUNT_TRIGGER = 30
+DISCOUNT_TRIGGER = 75
 CHECK_INTERVAL = 300
 
 sent = set()
